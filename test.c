@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void
+/*void
 f(void)
 {
     int a[4];
@@ -38,10 +38,16 @@ f(void)
     c = (int *) ((char *) a + 1);
     printf("6: a = %p, b = %p, c = %p\n", a, b, c);
 }
-
+*/
 int
 main(int ac, char **av)
 {
-    f();
+    //f();
+    int a = 0;
+    int *c;
+    c = &a;
+    printf(" a = %d.\n", a);
+    *c = 10;
+    printf("Now a = %d.\n", a);
     return 0;
 }
