@@ -160,7 +160,8 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
-
+	envs = (struct Env *)boot_alloc(sizeof(struct Env) * NENV);
+	memset(envs, 0, sizeof(struct Env) * NENV);
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -191,7 +192,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-
+	boot_map_region(kern_pgdir, UENVS, sizeof(struct Env) * NENV, PADDR(envs), PTE_U | PTE_P);
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -417,9 +418,9 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 	size_t pg_num = PGNUM(size);
 	for (size_t i = 0; i < pg_num; i++) {
 		pte_t *ptep = pgdir_walk(pgdir, (void *)va, 1);
-		if(va==0) {
-		cprintf("va:0x%x size:0x%x pgdir_walk : 0x%x\n", va, size, ptep);
-		}
+		//if(va==0) {
+		//	cprintf("va:0x%x size:0x%x pgdir_walk : 0x%x\n", va, size, ptep);
+		//}
 		if(!ptep) {
 			panic("out of memory.");
 			return;
@@ -562,7 +563,36 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-
+	//cprintf("mem check :va = 0x%x len = %d\n", va, len);
+	uint32_t vaint = (uint32_t)va;
+	assert(vaint <= vaint+len);
+	if (vaint+len > ULIM) {
+		user_mem_check_addr = ULIM>vaint?ULIM:vaint;
+		return -E_FAULT;
+	}
+	uint32_t i = 0;
+	uintptr_t *pgtable_p = 0;
+	for (i = vaint; i < vaint+len-1; i+=PGSIZE) {
+		if (NULL == page_lookup(env->env_pgdir, (void *)i, &pgtable_p)) {
+			//cprintf("pmap.c user_mem_check:This might not be an expected case");
+			user_mem_check_addr = ROUNDDOWN(i, PGSIZE)>vaint?ROUNDDOWN(i, PGSIZE):vaint;
+			return -E_FAULT;
+		}
+		if ((*pgtable_p & 0x07 & perm)!=perm) {
+			user_mem_check_addr = ROUNDDOWN(i, PGSIZE)>vaint?ROUNDDOWN(i, PGSIZE):vaint;
+			return -E_FAULT;
+		}
+	}
+	i = vaint+len-1;
+	if (NULL == page_lookup(env->env_pgdir, (void *)i, &pgtable_p)) {
+		//cprintf("pmap.c user_mem_check:This might not be an expected case");
+		user_mem_check_addr = ROUNDDOWN(i, PGSIZE)>vaint?ROUNDDOWN(i, PGSIZE):vaint;
+		return -E_FAULT;
+	}
+	if ((*pgtable_p & 0x07 & perm)!=perm) {
+		user_mem_check_addr = ROUNDDOWN(i, PGSIZE)>vaint?ROUNDDOWN(i, PGSIZE):vaint;
+		return -E_FAULT;
+	}
 	return 0;
 }
 
