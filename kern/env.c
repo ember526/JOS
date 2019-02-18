@@ -193,6 +193,7 @@ env_setup_vm(struct Env *e)
         e->env_pgdir[i] = 0;
     for (i = PDX(UTOP); i < NPDENTRIES; i++) {
         e->env_pgdir[i] = kern_pgdir[i];
+        //cprintf("=>0x%x\n", i);
      }  
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -258,7 +259,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
-
+	e->env_tf.tf_eflags |= FL_IF;
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -552,7 +553,7 @@ env_run(struct Env *e)
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
-	lcr3(PADDR(curenv->env_pgdir));
+	lcr3(PADDR(curenv->env_pgdir));  unlock_kernel();
 	env_pop_tf(&curenv->env_tf);
 	//panic("env_run not yet implemented");
 	panic("error");
