@@ -302,6 +302,21 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+	for (int i = 0; i < NPDENTRIES; i++) {
+		if (uvpd[i] & PTE_U) {
+			for (int j = 0; j < NPTENTRIES; j++) {
+				int pn = (i << 10) + j;
+				if ((uvpt[pn] & PTE_U) && pn*PGSIZE < UTOP &&
+					pn != PGNUM(UXSTACKTOP-1)) {
+						if (uvpt[pn]&PTE_SHARE) {
+							int r = sys_page_map(sys_getenvid(), (void *)(pn*PGSIZE), child, (void *)(pn*PGSIZE), uvpt[pn]&PTE_SYSCALL);
+							if (r < 0) panic("Error in duppage :%e", r);
+						}
+				}
+			}
+		}
+	}
+
 	return 0;
 }
 

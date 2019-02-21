@@ -74,7 +74,11 @@ duppage(envid_t envid, unsigned pn)
 	// LAB 4: Your code here.
 
 	//cprintf("page num : 0x%x\tentry : 0x%x\n", pn, uvpd[pn]);
-	if((uvpt[pn]&PTE_W) | (uvpt[pn]&PTE_COW)) {
+	if (uvpt[pn]&PTE_SHARE) {
+		r = sys_page_map(sys_getenvid(), (void *)(pn*PGSIZE), envid, (void *)(pn*PGSIZE), uvpt[pn]&PTE_SYSCALL);
+		if (r < 0) panic("Error in duppage :%e", r);
+	}
+	else if((uvpt[pn]&PTE_W) | (uvpt[pn]&PTE_COW)) {
 		r = sys_page_map(sys_getenvid(), (void *)(pn*PGSIZE), envid, (void *)(pn*PGSIZE), PTE_P | PTE_U | PTE_COW);
 		if (r < 0) panic("Error in duppage :%e", r);
 	
@@ -82,7 +86,7 @@ duppage(envid_t envid, unsigned pn)
 		if (r < 0) panic("Error in duppage :%e", r);	
 	}
 	else {
-		r = sys_page_map(sys_getenvid(), (void *)(pn*PGSIZE), envid, (void *)(pn*PGSIZE), uvpt[pn]&0xfff);
+		r = sys_page_map(sys_getenvid(), (void *)(pn*PGSIZE), envid, (void *)(pn*PGSIZE), uvpt[pn]&PTE_SYSCALL);
 		if (r < 0) panic("Error in fork :%e", r);	
 	}
 	return 0;
@@ -123,8 +127,7 @@ fork(void)
 		if (uvpd[i] & PTE_U) {
 			for (j = 0; j < NPTENTRIES; j++) {
 				pn = (i << 10) + j;
-				if ((uvpt[pn] & PTE_U) &&
-					pn*PGSIZE < UTOP &&
+				if ((uvpt[pn] & PTE_U) && pn*PGSIZE < UTOP &&
 					pn != PGNUM(UXSTACKTOP-1)) {
 					duppage(envid, pn);
 				}

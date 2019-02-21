@@ -62,7 +62,18 @@ alloc_block(void)
 	// super->s_nblocks blocks in the disk altogether.
 
 	// LAB 5: Your code here.
-	panic("alloc_block not implemented");
+	for (int ibyte = 0; ibyte < super->s_nblocks; ++ibyte) {
+		if (bitmap[ibyte] != 0) {
+			for (int i = 0; i < 32; ++i) {
+				if (bitmap[ibyte] & (1<<i)) {
+					bitmap[ibyte] &= ~(1<<i);
+					flush_block(diskaddr(i + ibyte*32));
+					return i + ibyte*32;
+				}
+			}
+		}
+	}
+	assert(0);
 	return -E_NO_DISK;
 }
 
@@ -134,8 +145,29 @@ fs_init(void)
 static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
-       // LAB 5: Your code here.
-       panic("file_block_walk not implemented");
+    	// LAB 5: Your code here.
+		if (filebno >= NDIRECT + NINDIRECT) 
+			return -E_INVAL;
+		if (filebno < NDIRECT) 
+			*ppdiskbno = f->f_direct + filebno;
+		else {
+			filebno -= NDIRECT;
+			if (f->f_indirect == 0) {
+				if (alloc) {
+					int blkno = alloc_block();
+					if (blkno < 0) return -E_NO_DISK;
+					f->f_indirect = blkno;
+					memset(diskaddr(blkno), 0, BLKSIZE);
+					flush_block(diskaddr(blkno));
+				}
+				else
+					return -E_NOT_FOUND;
+			} 
+			uint32_t *indirectp = diskaddr(f->f_indirect);
+			*ppdiskbno = indirectp + filebno;
+
+		}
+		return 0;
 }
 
 // Set *blk to the address in memory where the filebno'th
@@ -150,7 +182,20 @@ int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
        // LAB 5: Your code here.
-       panic("file_get_block not implemented");
+       	if (filebno >= NDIRECT + NINDIRECT) 
+			return -E_INVAL;
+		uint32_t *pdiskbno;
+		int r = file_block_walk(f, filebno, &pdiskbno, 1);
+		if (r < 0) return r;
+		if(*pdiskbno == 0) {
+			r = alloc_block();
+			if (r < 0) return r;
+             memset(diskaddr(r), 0, BLKSIZE);
+             flush_block(diskaddr(r));
+			*pdiskbno = r;
+		}
+		*blk = diskaddr(*pdiskbno);
+		return 0;
 }
 
 // Try to find a file named "name" in dir.  If so, set *file to it.
@@ -322,8 +367,10 @@ file_read(struct File *f, void *buf, size_t count, off_t offset)
 	off_t pos;
 	char *blk;
 
-	if (offset >= f->f_size)
+	if (offset >= f->f_size) {
+		//cprintf("%d %d\n", offset, f->f_size);
 		return 0;
+	}
 
 	count = MIN(count, f->f_size - offset);
 
