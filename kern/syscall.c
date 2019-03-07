@@ -385,6 +385,34 @@ sys_ipc_recv(void *dstva)
 	sched_yield();
 	return 0;
 }
+extern void exit(void) ;
+static int
+sys_clone(void* (*fcn)(void *), void *arg, void *stack)
+{
+	struct Env *parent = curenv, *child = NULL;
+
+	int r = env_alloc(&child, curenv->env_id);
+	//cprintf("--------------------%d\n", r);
+	if (r < 0)
+		return r;
+	child->env_status = ENV_NOT_RUNNABLE;
+	child->env_tf = parent->env_tf;
+
+
+	r = sys_page_alloc(0, (void *)(USTACKTOP-PGSIZE-parent->threads_nm*PGSIZE*2), PTE_W|PTE_P|PTE_U);
+	if (r < 0) 	return r;
+	uint32_t *stacktop = (uint32_t *)(USTACKTOP - parent->threads_nm*PGSIZE*2) - 1;
+	*stacktop = (uint32_t)arg;
+	stacktop--;
+	//*stacktop = (uint32_t)exit;
+	child->env_tf.tf_esp = (uint32_t)stacktop;
+	parent->threads_nm++;
+	child->env_tf.tf_eip = (uint32_t)fcn;
+	child->env_pgdir = parent->env_pgdir;
+	child->env_status = ENV_RUNNABLE;
+	return child->env_id;
+
+}
 
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
@@ -410,6 +438,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_ipc_try_send : return sys_ipc_try_send(a1, a2, (void *)a3, a4);
 		case SYS_ipc_recv     : return sys_ipc_recv((void *)a1);
 		case SYS_env_set_trapframe : return sys_env_set_trapframe(a1, (struct Trapframe *)a2);
+		case SYS_clone 		: return sys_clone((void *)a1, (void*)a2, (void*)a3);
 		case NSYSCALLS		: assert(0);break;
 	default:
 		return -E_INVAL;

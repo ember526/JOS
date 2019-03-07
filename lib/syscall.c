@@ -117,3 +117,8 @@ sys_ipc_recv(void *dstva)
 	return syscall(SYS_ipc_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
 }
 
+int 
+sys_clone(void* (*fcn)(void *), void *arg, void *stack)
+{
+	return syscall(SYS_clone, 0, (uint32_t)fcn, (uint32_t)arg, (uint32_t)stack, 0, 0);
+}

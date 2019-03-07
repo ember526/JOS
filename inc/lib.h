@@ -20,7 +20,7 @@
 #include <inc/fs.h>
 #include <inc/fd.h>
 #include <inc/args.h>
-
+#include <inc/pthread.h>
 #define USED(x)		(void)(x)
 
 // main user program
@@ -58,6 +58,7 @@ int	sys_page_unmap(envid_t env, void *pg);
 int	sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int	sys_ipc_recv(void *rcv_pg);
 
+int sys_clone(void* (*fcn)(void *), void *arg, void *stack);
 // This must be inlined.  Exercise for reader: why?
 static inline envid_t __attribute__((always_inline))
 sys_exofork(void)
@@ -117,6 +118,9 @@ int	pipeisclosed(int pipefd);
 // wait.c
 void	wait(envid_t env);
 
+
+//thread
+int pthread_create(pthread_t * thread, const pthread_attr_t * attr,  void * (*start_routine)(void*), void * arg);
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */
 #define	O_WRONLY	0x0001		/* open for writing only */
