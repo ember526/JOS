@@ -2,7 +2,8 @@
 
 void *mythread(void *arg) {
 cprintf("hello from : %s\n", (char *) arg);
-	while (1);
+while (1);
+
 return NULL;
 }
 

@@ -385,7 +385,6 @@ sys_ipc_recv(void *dstva)
 	sched_yield();
 	return 0;
 }
-extern void exit(void) ;
 static int
 sys_clone(void* (*fcn)(void *), void *arg, void *stack)
 {
