@@ -18,6 +18,10 @@ enum {
 	SYS_ipc_try_send,
 	SYS_ipc_recv,
 	SYS_clone,
+	SYS_thread_set_rtn_routine,
+	SYS_thread_destroy,
+	SYS_thread_join,
+	SYS_thread_check_join,
 	NSYSCALLS
 };
 

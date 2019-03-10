@@ -122,3 +122,27 @@ sys_clone(void* (*fcn)(void *), void *arg, void *stack)
 {
 	return syscall(SYS_clone, 0, (uint32_t)fcn, (uint32_t)arg, (uint32_t)stack, 0, 0);
 }
+
+int 
+sys_thread_set_rtn_routine(pthread_t tid, void *rtn_routine)
+{
+	return syscall(SYS_thread_set_rtn_routine, 0, tid, (uint32_t)rtn_routine, 0, 0, 0);
+}
+
+void 
+sys_thread_destroy()
+{
+	 syscall(SYS_thread_destroy, 0, 0, 0, 0, 0, 0);
+}
+
+int
+sys_thread_join(pthread_t thread, void **value_ptr)
+{
+	return syscall(SYS_thread_join, 0, thread, (uint32_t)value_ptr, 0, 0, 0);
+}
+
+int
+sys_thread_check_join()
+{
+	return syscall(SYS_thread_check_join, 0, 0, 0, 0, 0, 0);
+}

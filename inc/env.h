@@ -28,7 +28,9 @@ typedef int32_t envid_t;
 #define LOG2NENV		10
 #define NENV			(1 << LOG2NENV)
 #define ENVX(envid)		((envid) & (NENV - 1))
-
+#define THREADSNM 		5
+#define THEADSTACKBTM(tid)   (USTACKTOP - PGSIZE * (tid*2+1))
+#define THEADSTACKTOP(tid)   (USTACKTOP - PGSIZE * (tid*2  ))
 // Values of env_status in struct Env
 enum {
 	ENV_FREE = 0,
@@ -68,7 +70,10 @@ struct Env {
 	int env_ipc_perm;		// Perm of page mapping received
 
 	//for threads
-	int threads_nm;
+	//int threads_nm;
+	int tid;
+	struct Env *threads[THREADSNM];
+	int join_array[THREADSNM];
 };
 
 #endif // !JOS_INC_ENV_H

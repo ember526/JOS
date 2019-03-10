@@ -235,8 +235,12 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	e->env_type = ENV_TYPE_USER;
 	e->env_status = ENV_RUNNABLE;
 	e->env_runs = 0;
-
-	e->threads_nm = 1;
+	// Initialize members about threads
+	//e->threads_nm = 1;
+	e->tid = 0;
+	memset(e->threads, 0, sizeof(e->threads));
+	memset(e->join_array, 0, sizeof(e->join_array));
+	e->threads[0] = e; 
 	// Clear out all the saved register state,
 	// to prevent the register values
 	// of a prior environment inhabiting this Env structure
@@ -396,6 +400,9 @@ load_icode(struct Env *e, uint8_t *binary)
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 	// LAB 3: Your code here.
+	//for (int i = 0; i < THREADSNM; i++) {
+	//	region_alloc(e, (void *)(USTACKTOP-PGSIZE*(2*i+1)), PGSIZE);
+	//}
 	region_alloc(e, (void *)(USTACKTOP-PGSIZE), PGSIZE);
 }
 
@@ -503,6 +510,22 @@ env_destroy(struct Env *e)
 	}
 }
 
+void thread_env_destroy(struct Env *e)
+{
+	if (e->env_status == ENV_RUNNING && e != curenv) {
+		e->env_status = ENV_DYING;
+		return;
+	}
+
+	e->env_status = ENV_FREE;
+	e->env_link = env_free_list;
+	env_free_list = e;
+
+	if (e == curenv) {
+		curenv = NULL;
+		sched_yield();
+	}
+}
 
 //
 // Restores the register values in the Trapframe with the 'iret' instruction.

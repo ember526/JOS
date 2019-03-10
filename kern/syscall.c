@@ -385,10 +385,67 @@ sys_ipc_recv(void *dstva)
 	sched_yield();
 	return 0;
 }
+
+static int sys_thread_check_join()
+{
+	for (int i = 1; i < THREADSNM; ++i) {
+		if (curenv->join_array[i])
+			return 0;
+	}
+	return 1;
+}
+
+static int sys_thread_join(pthread_t tid, void **value_ptr)
+{
+	assert(curenv->threads[tid]);
+	curenv->join_array[tid] = 1;
+	return 0;
+}
+
+static void sys_thread_destroy()
+{
+	struct Env *parent = NULL;
+	int r = envid2env(curenv->env_parent_id, &parent, 0);
+	if (r < 0) panic("parent invalid");
+	//thread related resources
+	parent->threads[curenv->tid] = NULL;
+	assert(curenv->tid);
+	memset((void *)THEADSTACKBTM(curenv->tid), 0, PGSIZE);
+	r = sys_page_unmap(0, (void *)THEADSTACKBTM(curenv->tid));
+	if (r < 0) panic("unmap invalid");
+	parent->join_array[curenv->tid] = 0;
+	//env related resources
+	thread_env_destroy(curenv);
+}
+//set the termination routine for threads
+static int
+sys_thread_set_rtn_routine(pthread_t tid, void *rtn_routine)
+{
+	struct Env *thread = curenv->threads[tid];
+	//only the creator of the threat or itself can set the rtn routine
+	if (thread == NULL) {
+		cprintf(RED"failing thread id : %d\n"TAIL, thread);
+		return -E_INVAL;
+	}
+
+	uint32_t *stackpos = (uint32_t *)(USTACKTOP - thread->tid*2*PGSIZE);
+	stackpos -= 2;
+	*stackpos = (uint32_t)rtn_routine;
+	return 0;
+}
 static int
 sys_clone(void* (*fcn)(void *), void *arg, void *stack)
 {
 	struct Env *parent = curenv, *child = NULL;
+	//find a free thread slot for the new one
+	//if there is no free thread, return -E_NO_MEM
+	assert(parent->threads[0]);
+	int i;
+	for (i = 1; i < THREADSNM; ++i) {
+		if (parent->threads[i] == NULL)
+			break;
+	}
+	if(i == THREADSNM) {return -E_NO_MEM;}
 
 	int r = env_alloc(&child, curenv->env_id);
 	//cprintf("--------------------%d\n", r);
@@ -397,19 +454,20 @@ sys_clone(void* (*fcn)(void *), void *arg, void *stack)
 	child->env_status = ENV_NOT_RUNNABLE;
 	child->env_tf = parent->env_tf;
 
-
-	r = sys_page_alloc(0, (void *)(USTACKTOP-PGSIZE-parent->threads_nm*PGSIZE*2), PTE_W|PTE_P|PTE_U);
+	parent->threads[i] = child;
+	child->tid = i;
+	r = sys_page_alloc(0, (void *)(USTACKTOP-PGSIZE-child->tid*PGSIZE*2), PTE_W|PTE_P|PTE_U);
 	if (r < 0) 	return r;
-	uint32_t *stacktop = (uint32_t *)(USTACKTOP - parent->threads_nm*PGSIZE*2) - 1;
+	uint32_t *stacktop = (uint32_t *)(USTACKTOP - child->tid*PGSIZE*2) - 1;
 	*stacktop = (uint32_t)arg;
 	stacktop--;
-	//*stacktop = (uint32_t)exit;
+	//*stacktop = (uint32_t)terminate;
+	//cprintf("------>return value 0x%x\n", (uint32_t)terminate);
 	child->env_tf.tf_esp = (uint32_t)stacktop;
-	parent->threads_nm++;
 	child->env_tf.tf_eip = (uint32_t)fcn;
 	child->env_pgdir = parent->env_pgdir;
 	child->env_status = ENV_RUNNABLE;
-	return child->env_id;
+	return child->tid;
 
 }
 
@@ -438,6 +496,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_ipc_recv     : return sys_ipc_recv((void *)a1);
 		case SYS_env_set_trapframe : return sys_env_set_trapframe(a1, (struct Trapframe *)a2);
 		case SYS_clone 		: return sys_clone((void *)a1, (void*)a2, (void*)a3);
+		case SYS_thread_set_rtn_routine : return sys_thread_set_rtn_routine(a1, (void *)a2);
+		case SYS_thread_destroy 		: sys_thread_destroy(); return 0;
+		case SYS_thread_join : return sys_thread_join(a1, (void **)a2);
+		case SYS_thread_check_join : return sys_thread_check_join();
 		case NSYSCALLS		: assert(0);break;
 	default:
 		return -E_INVAL;

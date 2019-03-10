@@ -23,6 +23,23 @@
 #include <inc/pthread.h>
 #define USED(x)		(void)(x)
 
+#define TAIL "\033[m"
+#define RED "\033[0;32;31m"
+#define LIGHT_RED "\033[1;31m"
+#define GREEN "\033[0;32;32m"
+#define LIGHT_GREEN "\033[1;32m"
+#define BLUE "\033[0;32;34m"
+#define LIGHT_BLUE "\033[1;34m"
+#define DARY_GRAY "\033[1;30m"
+#define CYAN "\033[0;36m"
+#define LIGHT_CYAN "\033[1;36m"
+#define PURPLE "\033[0;35m"
+#define LIGHT_PURPLE "\033[1;35m"
+#define BROWN "\033[0;33m"
+#define YELLOW "\033[1;33m"
+#define LIGHT_GRAY "\033[0;37m"
+#define WHITE "\033[1;37m"
+
 // main user program
 void	umain(int argc, char **argv);
 
@@ -59,6 +76,10 @@ int	sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int	sys_ipc_recv(void *rcv_pg);
 
 int sys_clone(void* (*fcn)(void *), void *arg, void *stack);
+int sys_thread_set_rtn_routine(pthread_t tid, void *rtn_routine);
+void sys_thread_destroy();
+int sys_thread_join(pthread_t thread, void **value_ptr);
+int sys_thread_check_join();
 // This must be inlined.  Exercise for reader: why?
 static inline envid_t __attribute__((always_inline))
 sys_exofork(void)
