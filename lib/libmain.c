@@ -24,9 +24,6 @@ libmain(int argc, char **argv)
 
 	// call user main routine
 	umain(argc, argv);
-	while(sys_thread_check_join()==0){
-		cprintf(GREEN"waiting\n"TAIL);
-	}
 	// exit gracefully
 	exit();
 }

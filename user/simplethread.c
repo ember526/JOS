@@ -8,7 +8,8 @@ return NULL;
 }
 
 void 
- umain(int argc, char **argv) {
+ umain(int argc, char **argv)
+ {
  pthread_t p1, p2, p3, p4, p5, p6;
  int rc;
  cprintf("main: begin\n");

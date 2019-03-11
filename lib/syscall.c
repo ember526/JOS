@@ -142,7 +142,7 @@ sys_thread_join(pthread_t thread, void **value_ptr)
 }
 
 int
-sys_thread_check_join()
+sys_thread_check_join(pthread_t thread)
 {
-	return syscall(SYS_thread_check_join, 0, 0, 0, 0, 0, 0);
+	return syscall(SYS_thread_check_join, 0, thread, 0, 0, 0, 0);
 }

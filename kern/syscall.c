@@ -386,19 +386,25 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
-static int sys_thread_check_join()
+static int sys_thread_check_join(pthread_t tid)
 {
-	for (int i = 1; i < THREADSNM; ++i) {
-		if (curenv->join_array[i])
-			return 0;
-	}
+	//for (int i = 1; i < THREADSNM; ++i) {
+	//	if (curenv->join_array[i])
+	//		return 0;
+	//}
+	//return 1;
+	if(curenv->threads[tid])
+		return 0;
 	return 1;
 }
 
 static int sys_thread_join(pthread_t tid, void **value_ptr)
 {
-	assert(curenv->threads[tid]);
-	curenv->join_array[tid] = 1;
+	//assert(curenv->threads[tid]);
+	//curenv->join_array[tid] = 1;
+	//while(curenv->threads[tid])
+	//	;
+	assert(0);
 	return 0;
 }
 
@@ -499,7 +505,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_thread_set_rtn_routine : return sys_thread_set_rtn_routine(a1, (void *)a2);
 		case SYS_thread_destroy 		: sys_thread_destroy(); return 0;
 		case SYS_thread_join : return sys_thread_join(a1, (void **)a2);
-		case SYS_thread_check_join : return sys_thread_check_join();
+		case SYS_thread_check_join : return sys_thread_check_join(a1);
 		case NSYSCALLS		: assert(0);break;
 	default:
 		return -E_INVAL;

@@ -46,6 +46,8 @@ KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
 
 KERN_BINFILES :=	user/hello \
 					user/simplethread \
+					user/threadcounternolock\
+					user/threadcounterspin\
 					fs/fs \
 					user/icode
 ## Binary files for LAB3

@@ -502,6 +502,12 @@ env_destroy(struct Env *e)
 		return;
 	}
 
+	for (int i = 1; i < THREADSNM; ++i) {
+		if (e->threads[i]) {
+			thread_env_destroy(e->threads[i]);
+			e->threads[i] = NULL;
+		}
+	}
 	env_free(e);
 
 	if (curenv == e) {

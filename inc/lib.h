@@ -79,7 +79,7 @@ int sys_clone(void* (*fcn)(void *), void *arg, void *stack);
 int sys_thread_set_rtn_routine(pthread_t tid, void *rtn_routine);
 void sys_thread_destroy();
 int sys_thread_join(pthread_t thread, void **value_ptr);
-int sys_thread_check_join();
+int sys_thread_check_join(pthread_t thread);
 // This must be inlined.  Exercise for reader: why?
 static inline envid_t __attribute__((always_inline))
 sys_exofork(void)
