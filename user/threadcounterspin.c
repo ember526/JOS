@@ -14,7 +14,7 @@ mythread(void *arg)
 {
 	cprintf("%s: begin\n", (char *) arg);
 	int i;
-	for (i = 0; i < 1e7; i++) {
+	for (i = 0; i < 1e8; i++) {
 		pthread_spin_lock(&spinlock);
 		counter = counter + 1;
 		pthread_spin_unlock(&spinlock);

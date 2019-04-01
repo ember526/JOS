@@ -261,4 +261,14 @@ xchg(volatile uint32_t *addr, uint32_t newval)
 	return result;
 }
 
+static inline int fetch_and_add(volatile int* variable, int value)
+{
+    __asm__ volatile("lock; xaddl %0, %1"
+      : "+r" (value), "+m" (*variable) // input+output
+      : // No input-only
+      : "memory"
+    );
+    return value;
+}
+
 #endif /* !JOS_INC_X86_H */

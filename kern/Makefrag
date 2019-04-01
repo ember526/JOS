@@ -48,6 +48,8 @@ KERN_BINFILES :=	user/hello \
 					user/simplethread \
 					user/threadcounternolock\
 					user/threadcounterspin\
+					user/countermutex\
+					user/pv\
 					fs/fs \
 					user/icode
 ## Binary files for LAB3

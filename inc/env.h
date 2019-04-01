@@ -28,9 +28,24 @@ typedef int32_t envid_t;
 #define LOG2NENV		10
 #define NENV			(1 << LOG2NENV)
 #define ENVX(envid)		((envid) & (NENV - 1))
+//for threads
 #define THREADSNM 		5
 #define THEADSTACKBTM(tid)   (USTACKTOP - PGSIZE * (tid*2+1))
 #define THEADSTACKTOP(tid)   (USTACKTOP - PGSIZE * (tid*2  ))
+//for futex
+#define FUTEXARRAYLEN 10
+#define FUTEXQUEUELEN 10
+
+enum {
+	FUTEX_WAIT = 1,
+	FUTEX_WAKEUP
+};
+//for semaphore
+#define SEMSETNM  256
+#define MAXSEMNM  10
+#define IPC_CREAT 0x200
+#define IPC_EXCL  0x400
+
 // Values of env_status in struct Env
 enum {
 	ENV_FREE = 0,
@@ -44,6 +59,12 @@ enum {
 enum EnvType {
 	ENV_TYPE_USER = 0,
 	ENV_TYPE_FS,		// File system server
+};
+
+struct futex_mapping {
+	int *uaddr;
+	int tid;
+	struct Env * waiting_queue[FUTEXQUEUELEN];
 };
 
 struct Env {
@@ -74,6 +95,41 @@ struct Env {
 	int tid;
 	struct Env *threads[THREADSNM];
 	int join_array[THREADSNM];
+	//for futex
+	struct futex_mapping futex_array[FUTEXARRAYLEN];
 };
+
+
+struct semid_ds {
+	unsigned short sem_nsem; /* #number of semaphores in set, zero if the set is free*/
+	uint32_t key; /*to which key the semaphore binds*/
+	envid_t sempid; /*to which environment the semaphore set belongs*/
+	struct {
+		unsigned short semval; 	/* semaphore value, always >= 0 */
+		//unsigned short semncnt; /*not used : # processes awaiting semval>curval */
+		//unsigned short semzcnt; /*not used : # processes awaiting semval==0 */
+		//envid_t sempid; 			/*not used : pid for last operation */
+		int tid;
+	} semset[MAXSEMNM];
+};
+
+struct sembuf {
+	unsigned short sem_num;  /* semaphore number */
+	short          sem_op;   /* semaphore operation */
+	short          sem_flg;  /* operation flags */
+};
+
+union semun {
+    int val;
+    struct semid_ds *buf;
+    unsigned short *arry;
+};
+
+enum {
+	SETVAL,
+	IPC_RMID
+};
+
+extern struct semid_ds semaphore[SEMSETNM];
 
 #endif // !JOS_INC_ENV_H

@@ -19,6 +19,12 @@ struct Env *envs = NULL;		// All environments
 static struct Env *env_free_list;	// Free environment list
 					// (linked by Env->env_link)
 
+//for Semaphore
+
+struct semid_ds semaphore[SEMSETNM] = {0};
+
+
+
 #define ENVGENSHIFT	12		// >= LOGNENV
 
 // Global descriptor table.

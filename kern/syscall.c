@@ -386,6 +386,51 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+//uaddr:
+//futex_op: operation on the futex
+static int sys_futex(int *uaddr, int op) 
+{
+	struct Env *pivot = curenv;
+	if (curenv->tid) { // if current env is no the main thread
+		int r = envid2env(curenv->env_parent_id, &pivot, 0);
+		assert(r==0);
+	}
+	for (int i = 0; i < FUTEXARRAYLEN; ++i) {
+		if (pivot->futex_array[i].uaddr == uaddr) {
+			struct Env ** queue = pivot->futex_array[i].waiting_queue;
+			switch (op) {
+				case FUTEX_WAIT : 
+					for (int m = 0; m < FUTEXQUEUELEN; ++m) {
+						//if(pivot->futex_array[i].waiting_queue[m] == curenv)
+						//	return -E_INVAL;
+						if(queue[m] == NULL) {
+							queue[m] = curenv;
+							curenv->env_status = ENV_NOT_RUNNABLE;
+							sched_yield();
+							return 0;
+						}
+					}
+				case FUTEX_WAKEUP :
+					for (int m = 0; m < FUTEXQUEUELEN; ++m) {
+						//if(pivot->futex_array[i].waiting_queue[m] == curenv)
+						//	return -E_INVAL;
+						if(queue[m]) {
+							queue[m]->env_status = ENV_RUNNABLE;
+							queue[m] = NULL;
+							sched_yield();
+							return 0;
+						}
+					}
+
+			}
+
+		}
+	}
+	return -E_INVAL;
+}
+
+
+
 static int sys_thread_check_join(pthread_t tid)
 {
 	//for (int i = 1; i < THREADSNM; ++i) {
@@ -477,6 +522,97 @@ sys_clone(void* (*fcn)(void *), void *arg, void *stack)
 
 }
 
+static int
+sys_semget(uint32_t key, int nsem, int oflag)
+{
+	if (nsem > MAXSEMNM) return -E_INVAL;
+
+	struct semid_ds *sem = NULL;
+	int i = 0;
+	for (; i < SEMSETNM; ++i) {
+		if (semaphore[i].key == key) {
+			sem = semaphore + i;
+			break;
+		}
+	}
+	if ((oflag & IPC_CREAT) && (oflag & IPC_EXCL) && sem)
+		return -E_INVAL;
+	if (sem)
+		return i;
+
+	//no sem matching key 
+	if (!(oflag & IPC_CREAT))
+		return -E_INVAL;
+	//create a new one
+	for (i = 0; i < SEMSETNM; ++i) {
+		if (semaphore[i].key == 0) {
+			sem = semaphore + i;
+			break;
+		}
+	}
+	if (!sem)
+		return -E_NO_MEM;
+	sem->sem_nsem = nsem;
+	sem->key = key;
+	sem->sempid = curenv->env_id;
+	return i;
+}
+
+static int
+sys_semop(int semid, struct sembuf * opsptr, size_t nops) {
+	struct semid_ds *sem = &semaphore[semid];
+	//cprintf ("%d %d %d", sem->key, sem->sempid, curenv->env_id);
+	if (sem->key == 0 /*|| sem->sempid!=curenv->env_id*/) {
+		cprintf("invalid sem\n");
+		return -1;
+	}
+	for (int i = 0; i < nops; ++i) {
+		struct sembuf *buf = &opsptr[i];
+		if (buf->sem_num >= sem->sem_nsem){
+			cprintf("wrong num\n");
+			return -1;
+		}
+		unsigned short *semvalp = &(sem->semset[buf->sem_num].semval);
+		short semop = buf->sem_op;
+		if (semop < 0)
+			//while (1) {
+				//cprintf("0x%x %d %d\n", curenv->env_id, *semvalp, semop);
+				if (*semvalp + semop >= 0) {
+					*semvalp += semop;
+				}
+				else {
+					sys_futex((int *)semvalp, FUTEX_WAIT);
+					return i + 1;
+				}
+			//}
+		else {
+			*semvalp += semop;
+			sys_futex((int *)semvalp, FUTEX_WAKEUP);
+		}
+
+		//sem->semset[buf->sem_num] += buf->sem_op;
+	}
+	return 0;
+}
+
+static int
+sys_semctl(int semid, int semnum, int cmd, int val ) {
+	struct semid_ds *sem = &semaphore[semid];
+	if (sem->key == 0 || sem->sempid!=curenv->env_id
+					  || semnum >= sem->sem_nsem)
+		return -1;
+
+	if (cmd == SETVAL) {
+		sem->semset[semnum].semval = val;
+	}
+	else if (cmd == IPC_RMID) {
+		sem->sem_nsem = 0;
+		sem->key = 0;
+		sem->sempid = 0;
+	}
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -506,6 +642,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_thread_destroy 		: sys_thread_destroy(); return 0;
 		case SYS_thread_join : return sys_thread_join(a1, (void **)a2);
 		case SYS_thread_check_join : return sys_thread_check_join(a1);
+		case SYS_futex : return sys_futex((int *)a1, a2);
+		case SYS_semget: return sys_semget (a1, a2, a3);
+		case SYS_semop : return sys_semop  (a1, (struct sembuf *)a2, a3);
+		case SYS_semctl: return sys_semctl (a1, a2, a3, a4);
 		case NSYSCALLS		: assert(0);break;
 	default:
 		return -E_INVAL;

@@ -22,6 +22,10 @@ enum {
 	SYS_thread_destroy,
 	SYS_thread_join,
 	SYS_thread_check_join,
+	SYS_futex,
+	SYS_semget,
+	SYS_semop,
+	SYS_semctl,
 	NSYSCALLS
 };
 

@@ -146,3 +146,27 @@ sys_thread_check_join(pthread_t thread)
 {
 	return syscall(SYS_thread_check_join, 0, thread, 0, 0, 0, 0);
 }
+
+int
+sys_futex(pthread_mutex_t *uaddr, int op) 
+{
+	return syscall(SYS_futex, 0, (uint32_t)uaddr, op, 0, 0, 0);
+}
+
+int
+sys_semget (uint32_t key, int nsem, int oflag)
+{
+	return syscall(SYS_semget, 0, key, nsem, oflag, 0, 0);
+}
+
+int
+sys_semop (int semid, struct sembuf * opsptr, size_t nops)
+{
+	return syscall(SYS_semop, 0, semid, (uint32_t)opsptr, nops, 0, 0);
+}
+
+int
+sys_semctl (int semid, int semnum, int cmd, int val )
+{
+	return syscall(SYS_semctl, 0, semid, semnum, cmd, val, 0);
+}

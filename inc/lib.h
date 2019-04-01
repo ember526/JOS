@@ -1,3 +1,4 @@
+
 // Main public header file for our user-land support library,
 // whose code lives in the lib directory.
 // This library is roughly our OS's version of a standard C library,
@@ -80,6 +81,11 @@ int sys_thread_set_rtn_routine(pthread_t tid, void *rtn_routine);
 void sys_thread_destroy();
 int sys_thread_join(pthread_t thread, void **value_ptr);
 int sys_thread_check_join(pthread_t thread);
+int sys_futex(pthread_mutex_t *uaddr, int op);
+
+int sys_semget (uint32_t key, int nsem, int oflag);
+int sys_semop (int semid, struct sembuf * opsptr, size_t nops);
+int sys_semctl (int semid, int semnum, int cmd, int val );
 // This must be inlined.  Exercise for reader: why?
 static inline envid_t __attribute__((always_inline))
 sys_exofork(void)

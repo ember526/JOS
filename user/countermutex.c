@@ -1,21 +1,18 @@
 #include <inc/lib.h>
-
+#include <inc/pthread.h>
 static volatile int counter = 0;
+pthread_mutex_t mutex;
 
-//
-// mythread()
-//
-// Simply adds 1 to counter repeatedly, in a loop
-// No, this is not how you would add 10,000,000 to
-// a counter, but it shows the problem nicely.
-//
+
 void *
 mythread(void *arg)
 {
 	cprintf("%s: begin\n", (char *) arg);
 	int i;
 	for (i = 0; i < 1e8; i++) {
+		pthread_mutex_lock(&mutex);
 		counter = counter + 1;
+		pthread_mutex_unlock(&mutex);
 		//cprintf("%s: %d\n", arg, counter);
 	}
 	cprintf("%s: done\n", (char *) arg);
@@ -32,7 +29,8 @@ void
 umain(int argc, char **argv)
 {
 	pthread_t p1, p2, p3, p4;
-	printf("main: begin (counter = %d)\n", counter);
+	pthread_mutex_init(&mutex, NULL);
+	cprintf("main: begin (counter = %d)\n", counter);
 	pthread_create(&p1, NULL, mythread, "A");
 	pthread_create(&p2, NULL, mythread, "B");
 	pthread_create(&p3, NULL, mythread, "C");
