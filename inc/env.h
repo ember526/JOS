@@ -33,8 +33,8 @@ typedef int32_t envid_t;
 #define THEADSTACKBTM(tid)   (USTACKTOP - PGSIZE * (tid*2+1))
 #define THEADSTACKTOP(tid)   (USTACKTOP - PGSIZE * (tid*2  ))
 //for futex
-#define FUTEXARRAYLEN 10
-#define FUTEXQUEUELEN 10
+#define FUTEXARRAYLEN 5
+#define FUTEXQUEUELEN 5
 
 enum {
 	FUTEX_WAIT = 1,
@@ -63,7 +63,7 @@ enum EnvType {
 
 struct futex_mapping {
 	int *uaddr;
-	int tid;
+	int waitingNM;
 	struct Env * waiting_queue[FUTEXQUEUELEN];
 };
 
@@ -97,6 +97,7 @@ struct Env {
 	int join_array[THREADSNM];
 	//for futex
 	struct futex_mapping futex_array[FUTEXARRAYLEN];
+
 };
 
 

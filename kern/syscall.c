@@ -42,6 +42,12 @@ sys_getenvid(void)
 	return curenv->env_id;
 }
 
+static int
+sys_getcpuid(void)
+{
+	return cpunum();
+}
+
 // Destroy a given environment (possibly the currently running environment).
 //
 // Returns 0 on success, < 0 on error.  Errors are:
@@ -389,35 +395,46 @@ sys_ipc_recv(void *dstva)
 //uaddr:
 //futex_op: operation on the futex
 static int sys_futex(int *uaddr, int op) 
-{
+{//cprintf("inin uaddr = 0x%x\n", uaddr);
 	struct Env *pivot = curenv;
 	if (curenv->tid) { // if current env is no the main thread
 		int r = envid2env(curenv->env_parent_id, &pivot, 0);
 		assert(r==0);
 	}
-	for (int i = 0; i < FUTEXARRAYLEN; ++i) {
+	int i ;
+	for (i = 0; i < FUTEXARRAYLEN; ++i) {
 		if (pivot->futex_array[i].uaddr == uaddr) {
 			struct Env ** queue = pivot->futex_array[i].waiting_queue;
 			switch (op) {
 				case FUTEX_WAIT : 
+					if(*uaddr == 0 ) {
+						cprintf("**************\n");
+						return 0;
+					}
 					for (int m = 0; m < FUTEXQUEUELEN; ++m) {
 						//if(pivot->futex_array[i].waiting_queue[m] == curenv)
 						//	return -E_INVAL;
 						if(queue[m] == NULL) {
+							++pivot->futex_array[i].waitingNM; 
 							queue[m] = curenv;
 							curenv->env_status = ENV_NOT_RUNNABLE;
-							sched_yield();
+							//sched_yield();
 							return 0;
 						}
 					}
 				case FUTEX_WAKEUP :
+					if(*uaddr == 1 ) {
+						cprintf("----------------\n");
+						return 0;
+					}
 					for (int m = 0; m < FUTEXQUEUELEN; ++m) {
-						//if(pivot->futex_array[i].waiting_queue[m] == curenv)
-						//	return -E_INVAL;
-						if(queue[m]) {
+
+						if(queue[m] && queue[m]->env_status==ENV_NOT_RUNNABLE) {
+							//if(--pivot->futex_array[i].waitingNM == 0)
+							//	pivot->futex_array[i].uaddr = NULL;
 							queue[m]->env_status = ENV_RUNNABLE;
 							queue[m] = NULL;
-							sched_yield();
+							//sched_yield();
 							return 0;
 						}
 					}
@@ -426,7 +443,30 @@ static int sys_futex(int *uaddr, int op)
 
 		}
 	}
-	return -E_INVAL;
+	if (op == FUTEX_WAIT) {
+		//cprintf("wait uaddr = 0x%x\n", uaddr);
+		for (int i = 0; i < FUTEXARRAYLEN; ++i) {
+			if (pivot->futex_array[i].uaddr == NULL) {
+				pivot->futex_array[i].uaddr = uaddr;
+				pivot->futex_array[i].waitingNM = 1;
+				pivot->futex_array[i].waiting_queue[0] = curenv;
+				curenv->env_status = ENV_NOT_RUNNABLE;
+				//sched_yield();
+				return 0;
+			}
+
+		}
+	}
+	//cprintf("pivot->futex_array[0].uaddr = 0x%x\n", pivot->futex_array[0].uaddr);
+	//cprintf("pivot->futex_array[1].uaddr = 0x%x\n", pivot->futex_array[1].uaddr);
+	//cprintf("pivot->futex_array[2].uaddr = 0x%x\n", pivot->futex_array[2].uaddr);
+	//cprintf("wake uaddr = 0x%x\n", uaddr);
+	//cprintf("    *uaddr = %d\n", *uaddr);
+	//cprintf("i = %d\n", i);
+	//cprintf("0x%d\n", op);
+	//assert(0);
+	//return -E_INVAL;
+	return 0;
 }
 
 
@@ -454,7 +494,7 @@ static int sys_thread_join(pthread_t tid, void **value_ptr)
 }
 
 static void sys_thread_destroy()
-{
+{	//cprintf("\033[1;34m""destroying stack pos 0x%x\n""\033[m", (uint32_t)curenv->env_tf.tf_esp);
 	struct Env *parent = NULL;
 	int r = envid2env(curenv->env_parent_id, &parent, 0);
 	if (r < 0) panic("parent invalid");
@@ -467,6 +507,8 @@ static void sys_thread_destroy()
 	parent->join_array[curenv->tid] = 0;
 	//env related resources
 	thread_env_destroy(curenv);
+	//while(1) {cprintf("sdfsdfsd\n");}
+	sys_yield();
 }
 //set the termination routine for threads
 static int
@@ -510,10 +552,16 @@ sys_clone(void* (*fcn)(void *), void *arg, void *stack)
 	r = sys_page_alloc(0, (void *)(USTACKTOP-PGSIZE-child->tid*PGSIZE*2), PTE_W|PTE_P|PTE_U);
 	if (r < 0) 	return r;
 	uint32_t *stacktop = (uint32_t *)(USTACKTOP - child->tid*PGSIZE*2) - 1;
+	//cprintf("\033[1;32m""------>new  thread stacktop 0x%x\n""\033[m", (uint32_t)stacktop);
+	//cprintf("\033[1;32m""------>main thread stacktop 0x%x\n""\033[m", (uint32_t)parent->env_tf.tf_esp);
+	//cprintf("\033[1;32m""------>new  thread ebp      0x%x\n""\033[m", (uint32_t)child ->env_tf.tf_regs.reg_ebp);
+	//cprintf("\033[1;32m""------>main thread ebp      0x%x\n""\033[m", (uint32_t)parent->env_tf.tf_regs.reg_ebp);
+
 	*stacktop = (uint32_t)arg;
 	stacktop--;
 	//*stacktop = (uint32_t)terminate;
 	//cprintf("------>return value 0x%x\n", (uint32_t)terminate);
+
 	child->env_tf.tf_esp = (uint32_t)stacktop;
 	child->env_tf.tf_eip = (uint32_t)fcn;
 	child->env_pgdir = parent->env_pgdir;
@@ -567,6 +615,7 @@ sys_semop(int semid, struct sembuf * opsptr, size_t nops) {
 		return -1;
 	}
 	for (int i = 0; i < nops; ++i) {
+
 		struct sembuf *buf = &opsptr[i];
 		if (buf->sem_num >= sem->sem_nsem){
 			cprintf("wrong num\n");
@@ -581,13 +630,21 @@ sys_semop(int semid, struct sembuf * opsptr, size_t nops) {
 					*semvalp += semop;
 				}
 				else {
+					*semvalp += semop;
 					sys_futex((int *)semvalp, FUTEX_WAIT);
+					*semvalp -= semop;
+					//cprintf("wwwwwwwwwwwwww%d\n", *semvalp);
 					return i + 1;
 				}
 			//}
 		else {
+			if (*semvalp <= 0) {
+				//cprintf("hhhhhhhhhhhhhhh\n");
+				sys_futex((int *)semvalp, FUTEX_WAKEUP);
+			}
+			//cprintf("hhhhhhhhhhhhhhh%d\n", *semvalp);
 			*semvalp += semop;
-			sys_futex((int *)semvalp, FUTEX_WAKEUP);
+			//cprintf("hhhhhhhhhhhhhhh%d\n", *semvalp);
 		}
 
 		//sem->semset[buf->sem_num] += buf->sem_op;
@@ -646,6 +703,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_semget: return sys_semget (a1, a2, a3);
 		case SYS_semop : return sys_semop  (a1, (struct sembuf *)a2, a3);
 		case SYS_semctl: return sys_semctl (a1, a2, a3, a4);
+		case SYS_getcpuid : return sys_getcpuid ();
 		case NSYSCALLS		: assert(0);break;
 	default:
 		return -E_INVAL;

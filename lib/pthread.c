@@ -56,7 +56,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
 	fetch_and_add(mutex, -1);
 	if (*mutex != 0)
-		sys_futex(mutex, FUTEX_WAIT);
+		assert(sys_futex(mutex, FUTEX_WAIT) == 0);
 	return 0;
 
 }
@@ -65,7 +65,7 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
 	fetch_and_add(mutex, 1);
 	if (*mutex != 1)
-		sys_futex(mutex, FUTEX_WAKEUP);
+		assert(sys_futex(mutex, FUTEX_WAKEUP) == 0);
 	return 0;
 }
 
@@ -82,7 +82,7 @@ int semop(int semid, struct sembuf * opsptr, size_t nops)
 		nops = nops - r + 1;
 		r = sys_semop(semid, tmp+r-1, nops);
 	} while (r);
-	sys_semop(semid, opsptr, nops);
+	//sys_semop(semid, opsptr, nops);
 	//cprintf (GREEN"%d\n"TAIL, r);
 	return r;
 }
@@ -108,4 +108,5 @@ void V(int semid, int index)
 	sem.sem_op = 1;
 	sem.sem_flg = 0;
 	assert(semop(semid, &sem, 1) == 0);
+	//cprintf (GREEN"%d\n"TAIL, 351);
 }

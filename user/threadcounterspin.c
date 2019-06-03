@@ -12,15 +12,15 @@ pthread_spinlock_t spinlock;
 void *
 mythread(void *arg)
 {
-	cprintf("%s: begin\n", (char *) arg);
+	cprintf(LIGHT_PURPLE"%s: begin with"TAIL LIGHT_BLUE" SPIN LOCK\n"TAIL, (char *) arg);
 	int i;
-	for (i = 0; i < 1e8; i++) {
+	for (i = 0; i < 1e6; i++) {
 		pthread_spin_lock(&spinlock);
 		counter = counter + 1;
 		pthread_spin_unlock(&spinlock);
 		//cprintf("%s: %d\n", arg, counter);
 	}
-	cprintf("%s: done\n", (char *) arg);
+	cprintf(LIGHT_GREEN"%s: done\n"TAIL, (char *) arg);
 	return NULL;
 }
 
@@ -34,7 +34,7 @@ void
 umain(int argc, char **argv)
 {
 	pthread_t p1, p2, p3, p4;
-	printf("main: begin (counter = %d)\n", counter);
+	cprintf(LIGHT_RED"main: begin (counter = %d)\n"TAIL, counter);
 	pthread_create(&p1, NULL, mythread, "A");
 	pthread_create(&p2, NULL, mythread, "B");
 	pthread_create(&p3, NULL, mythread, "C");
@@ -44,6 +44,6 @@ umain(int argc, char **argv)
 	pthread_join(p2, NULL);
 	pthread_join(p3, NULL);
 	pthread_join(p4, NULL);
-	cprintf("main: done with both (counter = %d)\n", counter);
+	cprintf(LIGHT_RED"main: done (counter = %d)\n"TAIL, counter);
 	return;
 }

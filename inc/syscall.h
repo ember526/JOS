@@ -26,6 +26,7 @@ enum {
 	SYS_semget,
 	SYS_semop,
 	SYS_semctl,
+	SYS_getcpuid,
 	NSYSCALLS
 };
 

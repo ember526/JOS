@@ -508,6 +508,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
     pp->pp_ref++;
     if (*ptep & PTE_P) {
         page_remove(pgdir, va);
+        tlb_invalidate(pgdir, va);
     }
 	//cprintf("asdasdsad0x%x\n", *ptep=1);
     *ptep = ((pp - pages) << PGSHIFT) | perm | PTE_P;
@@ -553,7 +554,7 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 //     the page table.
 //
 // Hint: The TA solution is implemented using page_lookup,
-// 	tlb_invalidate, and page_decref.
+// 	tlb_invalidate(pgdir, va);, and page_decref.
 //
 void
 page_remove(pde_t *pgdir, void *va)

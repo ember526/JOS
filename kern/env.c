@@ -499,7 +499,7 @@ env_free(struct Env *e)
 //
 void
 env_destroy(struct Env *e)
-{
+{cprintf("destroy env : [%x] tid%d on CPU%d\n", curenv->env_id, curenv->tid, cpunum());
 	// If e is currently running on other CPUs, we change its state to
 	// ENV_DYING. A zombie environment will be freed the next time
 	// it traps to the kernel.
@@ -507,7 +507,12 @@ env_destroy(struct Env *e)
 		e->env_status = ENV_DYING;
 		return;
 	}
-
+	for (int i = 0; i < FUTEXARRAYLEN; ++i) {
+		e->futex_array[i].uaddr = NULL;
+		e->futex_array[i].waitingNM = 0;
+		for (int j = 0; j < FUTEXQUEUELEN; ++j)
+			e->futex_array[i].waiting_queue[j] = NULL;
+	}
 	for (int i = 1; i < THREADSNM; ++i) {
 		if (e->threads[i]) {
 			thread_env_destroy(e->threads[i]);
@@ -532,8 +537,13 @@ void thread_env_destroy(struct Env *e)
 	e->env_status = ENV_FREE;
 	e->env_link = env_free_list;
 	env_free_list = e;
+	envid_t parent_id = e->env_parent_id;
+	struct Env *parent = NULL;
+	int r = envid2env(parent_id, &parent, 0);
+	parent->threads[e->tid] = NULL;
 
 	if (e == curenv) {
+	//cprintf("\033[1;31m""destroy thread : [%x] on CPU%d status %d\n""\033[m", curenv->env_id, cpunum(), curenv->env_status);
 		curenv = NULL;
 		sched_yield();
 	}

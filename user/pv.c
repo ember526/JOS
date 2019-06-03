@@ -13,6 +13,7 @@ void *countSub()
 		cprintf(LIGHT_PURPLE"count says:%4d      \n"TAIL, a);
 		V(semid, 1);
 	}
+	cprintf (GREEN"count quits\n"TAIL);
 	return NULL;
 }
 void *printSub()
@@ -26,6 +27,7 @@ void *printSub()
 		cprintf(LIGHT_CYAN"print says:%4d\n"TAIL, a);
 		V(semid, 0);
 	}
+	cprintf (GREEN"print quits\n"TAIL);
 	return NULL;
 }
 
@@ -52,6 +54,7 @@ umain(int argc, char **argv)
 	pthread_join(p2, NULL);
 	/*删除信号灯*/
 	semctl(semid, 0, IPC_RMID, 0);
+	cprintf (GREEN"Main exiting\n"TAIL);
 	//semctl(semid, 1, IPC_RMID);
 	return;
 }

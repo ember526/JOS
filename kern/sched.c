@@ -31,10 +31,10 @@ sched_yield(void)
 	// LAB 4: Your code here.
 	struct Env *e = thiscpu->cpu_env;
 	size_t offset = e ? ENVX(e->env_id) : 0;
-	for (int i = 0; i < NENV; i++) {
+	for (int i = 1; i <= NENV; i++) {
 		int index = (i+offset)%NENV;
 		if (envs[index].env_status == ENV_RUNNABLE) {
-			//cprintf("index:%d envid:0x%x\n",i,  envs[index].env_id);
+			//cprintf("\033[1;31m""status:%d index %d envid:0x%x\n""\033[m", envs[index].env_status, index,  envs[index].env_id);
 			env_run(&envs[index]);
 		}
 	}
